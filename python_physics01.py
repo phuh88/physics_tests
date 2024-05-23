@@ -11,16 +11,18 @@ class PhysicsEntity:
     def __init__(self, pos):
         self.pos = list(pos)
         self.speed = 2
-        self.acc = 0.05
-        self.dec = .9
+        self.acc = 0.15
+        self.dec = .88
         self.vel = [0, 0]
         self.change = [0, 0]
         self.collisions = {'top': False, 'bottom': False, 'right': False, 'left': False}
+        self.prev_frm_pos = self.pos.copy()
 
-    def rect(self):
-        return pygame.Rect(self.pos[0], self.pos[1], 16, 16)
+    def rect(self, pos):
+        return pygame.Rect(pos[0], pos[1], 16, 16)
 
     def update(self, tilemap, movement=(0, 0)):
+        self.prev_frm_pos = self.pos.copy()
         self.collisions = {'top': False, 'bottom': False, 'right': False, 'left': False}
 
         # initiate movement
@@ -71,36 +73,44 @@ class PhysicsEntity:
         self.pos[1] += self.change[1]
 
         # collisions
-        entity_rect = self.rect()
+        entity_rect = self.rect(self.pos)
+        prev_ent_rect = self.rect(self.prev_frm_pos)
         for rect in tilemap.rects_around(self.pos):
+            print('x')
             if entity_rect.colliderect(rect):
-                if self.change[0] > 0:
-                    self.change[0] = 0
+                if entity_rect.right >= rect.left >= prev_ent_rect.right:
                     entity_rect.right = rect.left
                     self.collisions['right'] = True
-                if self.change[0] < 0:
                     self.change[0] = 0
+                    self.pos[0] = entity_rect.x
+                if entity_rect.left <= rect.right <= prev_ent_rect.left:
                     entity_rect.left = rect.right
                     self.collisions['left'] = True
-                self.pos[0] = entity_rect.x
+                    self.change[0] = 0
+                    self.pos[0] = entity_rect.x
 
-        entity_rect = self.rect()
+        entity_rect = self.rect(self.pos)
+        prev_ent_rect = self.rect(self.prev_frm_pos)
         for rect in tilemap.rects_around(self.pos):
+            print('y')
             if entity_rect.colliderect(rect):
-                if self.change[1] > 0:
-                    self.change[1] = 0
+                if entity_rect.bottom >= rect.top >= prev_ent_rect.bottom:
                     entity_rect.bottom = rect.top
                     self.collisions['bottom'] = True
-                if self.change[1] < 0:
                     self.change[1] = 0
+                    self.pos[1] = entity_rect.y
+                if entity_rect.top <= rect.bottom <= prev_ent_rect.top:
                     entity_rect.top = rect.bottom
                     self.collisions['top'] = True
-                self.pos[1] = entity_rect.y
+                    self.change[1] = 0
+                    self.pos[1] = entity_rect.y
 
         print(self.collisions)
 
     def render(self, surf):
+        pygame.draw.rect(surf, (255, 150, 0), (self.prev_frm_pos[0], self.prev_frm_pos[1], TILESIZE, TILESIZE))
         pygame.draw.rect(surf, (255, 255, 255), (self.pos[0], self.pos[1], TILESIZE, TILESIZE))
+
 
 class Block:
     def __init__(self, game, size, amt):
@@ -109,6 +119,7 @@ class Block:
         self.amt = amt
         self.tilemap = {}
         self.tilemap_proximity = []
+        self.prior_frame = self.tilemap.copy()
 
         for i in (self.random_pos()):
             self.tilemap[i[0], i[1]] = pygame.Rect(i[0] * TILESIZE, i[1] * TILESIZE, self.size[0], self.size[1])
@@ -133,9 +144,8 @@ class Block:
     def rects_around(self, pos):
         rects = []
         for tile in self.proximity(pos):
-            if tile not in self.tilemap_proximity:
-                self.tilemap_proximity.append(pygame.Rect(tile[0], tile[1], self.size[0], self.size[1]))
-                rects.append(pygame.Rect(tile[0], tile[1], self.size[0], self.size[1]))
+            self.tilemap_proximity.append(pygame.Rect(tile[0], tile[1], self.size[0], self.size[1]))
+            rects.append(pygame.Rect(tile[0], tile[1], self.size[0], self.size[1]))
             print(rects)
         return rects
 
